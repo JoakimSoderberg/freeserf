@@ -7,36 +7,70 @@
 # SDLMIXER_FOUND        = set to 1 if SDL2_mixer is found
 #
 
-IF(SDL2_Mixer_INCLUDE_DIRS)
+SET(SDLMIXER_SEARCH_PATHS
+  ~/Library/Frameworks
+  /Library/Frameworks
+  /usr/local
+  /usr
+  /sw # Fink
+  /opt/local # DarwinPorts
+  /opt/csw # Blastwave
+  /opt
+)
 
-  FIND_PATH(SDLMIXER_INCLUDE_DIR SDL2/SDL_mixer.h ${SDL2_Mixer_INCLUDE_DIRS})
-  FIND_LIBRARY(SDLMIXER_LIBRARY SDL2_mixer ${SDL2_Mixer_LIBRARY_DIRS})
+FIND_PATH(SDLMIXER_INCLUDE_DIR SDL_mixer.h
+  HINTS
+  $ENV{SDL2DIR}
+  PATH_SUFFIXES include/SDL2 include
+  PATHS ${SDLMIXER_SEARCH_PATHS}
+)
 
-ELSE(SDL2_Mixer_INCLUDE_DIRS)
+FIND_LIBRARY(SDLMIXER_LIBRARY_TEMP
+  NAMES SDL2_mixer
+  HINTS
+  $ENV{SDL2DIR}
+  PATH_SUFFIXES lib64 lib
+  PATHS ${SDLMIXER_SEARCH_PATHS}
+)
 
-  SET(TRIAL_LIBRARY_PATHS
-    $ENV{SDL2_MIXER_HOME}/lib
-    /usr/lib
-    /usr/local/lib
-    /sw/lib
-  ) 
-  SET(TRIAL_INCLUDE_PATHS
-    $ENV{SDL2_MIXER_HOME}/include/SDL2
-    /usr/include/SDL2
-    /usr/local/include/SDL2
-    /sw/include/SDL2
-  ) 
+IF(NOT SDLMIXER_BUILDING_LIBRARY)
+  IF(NOT ${SDLMIXER_INCLUDE_DIR} MATCHES ".framework")
+    # Non-OS X framework versions expect you to also dynamically link to
+    # SDL2main. This is mainly for Windows and OS X. Other (Unix) platforms
+    # seem to provide SDL2main for compatibility even though they don't
+    # necessarily need it.
+    FIND_LIBRARY(SDLMIXER_LIBRARY
+      NAMES SDL2_mixer
+      HINTS
+      $ENV{SDL2DIR}
+      PATH_SUFFIXES lib64 lib
+      PATHS ${SDLMIXER_SEARCH_PATHS}
+    )
+  ENDIF(NOT ${SDLMIXER_INCLUDE_DIR} MATCHES ".framework")
+ENDIF(NOT SDLMIXER_BUILDING_LIBRARY)
 
-  FIND_LIBRARY(SDLMIXER_LIBRARY SDL2_mixer ${TRIAL_LIBRARY_PATHS})
-  FIND_PATH(SDLMIXER_INCLUDE_DIR SDL_mixer.h ${TRIAL_INCLUDE_PATHS})
+IF(SDLMIXER_LIBRARY_TEMP)
+  # For OS X, SDL2 uses Cocoa as a backend so it must link to Cocoa.
+  # CMake doesn't display the -framework Cocoa string in the UI even
+  # though it actually is there if I modify a pre-used variable.
+  # I think it has something to do with the CACHE STRING.
+  # So I use a temporary variable until the end so I can set the
+  # "real" variable in one-shot.
+  IF(APPLE)
+    SET(SDLMIXER_LIBRARY_TEMP ${SDLMIXER_LIBRARY_TEMP} "-framework Cocoa")
+  ENDIF(APPLE)
 
-ENDIF(SDL2_Mixer_INCLUDE_DIRS)
+  # Set the final string here so the GUI reflects the final state.
+  SET(SDLMIXER_LIBRARY ${SDLMIXER_LIBRARY_TEMP} CACHE STRING "Where the SDL2 Library can be found")
+  # Set the temp variable to INTERNAL so it is not seen in the CMake GUI
+  SET(SDLMIXER_LIBRARY_TEMP "${SDLMIXER_LIBRARY_TEMP}" CACHE INTERNAL "")
+ENDIF(SDLMIXER_LIBRARY_TEMP)
 
-IF(SDLMIXER_INCLUDE_DIR AND SDLMIXER_LIBRARY)
-  SET(SDLMIXER_FOUND 1 CACHE BOOL "Found SDL2_Mixer library")
-ELSE(SDLMIXER_INCLUDE_DIR AND SDLMIXER_LIBRARY)
-  SET(SDLMIXER_FOUND 0 CACHE BOOL "Not fount SDL2_Mixer library")
-ENDIF(SDLMIXER_INCLUDE_DIR AND SDLMIXER_LIBRARY)
+INCLUDE(FindPackageHandleStandardArgs)
+
+if (NOT SDL2_mixer-NOTFOUND)
+  set(SDLMIXER_FOUND 1)
+endif()
 
 MARK_AS_ADVANCED(
   SDLMIXER_INCLUDE_DIR 
