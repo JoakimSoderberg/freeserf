@@ -12,6 +12,30 @@ if (APPLE)
 	option(APPLE_UNIVERSAL_BUILD "Build OSX universal binary" OFF)
 endif()
 
+#
+# Regenerate version-vcs.h on each build to get up to date git version.
+#
+
+# Generate a cmake script that runs on each build, that will get the git version.
+configure_file("${PROJECT_SOURCE_DIR}/cmake/configure_version_vcs.cmake.in"
+  "${PROJECT_BINARY_DIR}/configure_version_vcs.cmake" @ONLY)
+
+# Run the generated script to output the header.
+add_custom_command(OUTPUT ${PROJECT_BINARY_DIR}/version-vcs.h
+  COMMAND ${CMAKE_COMMAND} -P
+    ${PROJECT_BINARY_DIR}/configure_version_vcs.cmake
+  DEPENDS
+    ${PROJECT_BINARY_DIR}/configure_version_vcs.cmake
+    ${PROJECT_SOURCE_DIR}/cmake/version-vcs.h.in
+  COMMENT "Configuring version-vcs.h"
+  VERBATIM)
+
+# Depend on the header, this will trigger the above command. For all build targets. 
+add_custom_target(configure_version_vcs ALL
+  DEPENDS ${PROJECT_BINARY_DIR}/version-vcs.h)
+
+
+
 include(FindStdIntTypes)
 
 include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
@@ -86,21 +110,26 @@ set(HDRS
 	src/serf.h
 	src/sfx2wav.h
 	src/tpwm.h
-	src/version-vcs.h
 	src/version.h
 	src/video-sdl.h
 	src/video.h
 	src/viewport.h
 	src/xmi2mid.h)
 
+if (WIN32)
+	list(APPEND HDRS windows/win_snprintf.h)
+	set_source_files_properties(${SRCS} ${HDRS} PROPERTIES LANGUAGE CXX)
+endif()
+
 find_package(SDL2 REQUIRED)
+message("SDL2_LIBRARY = ${SDL2_LIBRARY}")
 
 if (ENABLE_SDL2_MIXER)
 	find_package(SDL2_mixer)
 endif()
 
 if (SDLMIXER_FOUND)
-	message("SDL2 mixer found")
+	message("SDL2 mixer found ${SDLMIXER_LIBRARY}")
 	list(APPEND SRCS src/audio-sdlmixer.cc)
 	list(APPEND HDRS src/audio-sdlmixer.h)
 	include_directories(${SDLMIXER_INCLUDE_DIR})
@@ -123,4 +152,12 @@ target_link_libraries(${FREESERF_NAME} ${SDL2_LIBRARY})
 
 if (SDLMIXER_FOUND)
 	target_link_libraries(${FREESERF_NAME} ${SDLMIXER_LIBRARY})
+endif()
+
+
+if (MSVC)
+	set_target_properties(${FREESERF_NAME} 
+		PROPERTIES LINK_FLAGS " /INCREMENTAL /SUBSYSTEM:WINDOWS /DYNAMICBASE:NO /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:msvcrtd.lib") #/NODEFAULTLIB:\"msvcrtd.lib\"")
+	#	"/NODEFAULTLIB:\"msvcrt.lib\" /NODEFAULTLIB:\"msvcrtd.lib\"")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd\"4290\"")
 endif()

@@ -5,16 +5,47 @@ include(CheckTypeSize)
 # Check for the int-type includes
 check_include_files (stdint.h HAVE_STDINT_H)
 
+check_type_size ("long" LONG_INT)
+check_type_size ("int" INT)
+
 # Check our 64 bit integer sizes
 check_type_size (__int64 __INT64)
 check_type_size (int64_t INT64_T)
 check_type_size ("long long" LONG_LONG_INT)
+if (HAVE_INT64_T)
+   set (FREESERF_INT64 "int64_t")
+elseif (HAVE___INT64)
+   set (FREESERF_INT64 "__int64")
+elseif (HAVE_LONG_INT AND (${LONG_INT} EQUAL 8))
+   set (FREESERF_INT64 "long")
+elseif (HAVE_LONG_LONG_INT AND (${LONG_LONG_INT} EQUAL 8))
+   set (FREESERF_INT64 "long long int")
+else ()
+   message (FATAL_ERROR "Could not detect a valid 64-bit integer type")
+endif ()
+
+# Check our 64 bit integer sizes
+check_type_size (__uint64 __UINT64)
+check_type_size (uint64_t UINT64_T)
+check_type_size ("unsigned long" ULONG_INT)
+check_type_size ("unsigned long long" ULONG_LONG_INT)
+if (HAVE_UINT64_T)
+   set (FREESERF_UINT64 "uint64_t")
+elseif (HAVE___UINT64)
+   set (FREESERF_UINT64 "__uint64")
+elseif (HAVE_ULONG_INT AND (${ULONG_INT} EQUAL 8))
+   set (FREESERF_UINT64 "unsigned long int")
+elseif (HAVE_ULONG_LONG_INT AND (${ULONG_LONG_INT} EQUAL 8))
+   set (FREESERF_UINT64 "unsigned long long int")
+else ()
+   message (FATAL_ERROR "Could not detect a valid unsigned 64-bit integer type")
+endif ()
+
+
 
 # Check our 32 bit integer sizes
 check_type_size (int32_t INT32_T)
 check_type_size (__int32 __INT32)
-check_type_size ("long" LONG_INT)
-check_type_size ("int" INT)
 if (HAVE_INT32_T)
    set (FREESERF_INT32 int32_t)
 elseif (HAVE___INT32)

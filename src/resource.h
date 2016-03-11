@@ -22,6 +22,8 @@
 #ifndef _RESOURCE_H
 #define _RESOURCE_H
 
+#include "misc.h"
+
 typedef enum {
 	RESOURCE_NONE = -1,
 
